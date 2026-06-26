@@ -12,7 +12,7 @@ export const register = async (req, res) => {
       });
     }
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
       options: {
         data: {
           username: username
@@ -23,7 +23,25 @@ export const register = async (req, res) => {
     });
 
     if (error) throw error;
-    res.status(200).json({ message: "Successfully signed up!" });
+
+    const user = authData.user;
+
+    if (user) {
+      const { error } = await supabase
+        .from('users')
+        .insert({
+          user_id: user.id,
+          username: username,
+          email: email,
+        });
+
+      if (error) throw error;
+    }
+    res.status(200).json({ 
+      message: "Successfully signed up!",
+      user: authData.user
+    });
+    
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -43,7 +61,11 @@ export const login = async (req, res) => {
     })
 
     if (error) throw error;
-    res.status(200).json({ message: "Successfully signed in!" });
+    res.status(200).json({ 
+      message: "Successfully signed in!",
+      user: data.user,
+      session: data.session
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

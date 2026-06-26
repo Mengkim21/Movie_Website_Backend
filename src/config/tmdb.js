@@ -2,7 +2,7 @@ import axios from "axios";
 import dotenv from 'dotenv';
 dotenv.config();
 
-const tmdbClient = create.axios({
+const tmdbClient = axios.create({
   baseURL: 'http://api.themoviedb.org/3',
   headers: {
     Authorization: `Bearer ${process.env.TMDB_READ_ACCESS_TOKEN}`,
@@ -10,9 +10,9 @@ const tmdbClient = create.axios({
   }
 })
 
-axios
-  .request(tmdbClient)
-  .then(res => console.log(res.data))
-  .catch(res => console.error(err));
+// axios
+//   .request(tmdbClient)
+//   .then(res => console.log(res.data))
+//   .catch(res => console.error());
 
 export default tmdbClient;

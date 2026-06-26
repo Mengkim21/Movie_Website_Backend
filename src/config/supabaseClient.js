@@ -3,11 +3,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !supabseKey) {
+if (!supabaseUrl || !supabaseKey) {
   throw new Error("Supabase URL or KEY is missing in .env");
 }
 
-const supabase = createClient(supabaseUrl, supabseKey);
+const supabase = createClient(supabaseUrl, supabaseKey);
 export default supabase;
