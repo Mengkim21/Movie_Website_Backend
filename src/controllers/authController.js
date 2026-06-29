@@ -1,6 +1,4 @@
 import supabase from "../config/supabaseClient.js";
-import dotenv from 'dotenv';
-dotenv.config();
 
 export const register = async (req, res) => {
   try {
