@@ -9,5 +9,7 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("Supabase URL or KEY is missing in .env");
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
-export default supabase;
+export const supabase = createClient(
+  supabaseUrl, 
+  supabaseKey,
+);
