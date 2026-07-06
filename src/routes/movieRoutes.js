@@ -1,5 +1,7 @@
 import express from 'express';
 import { 
+  discoverMoviesByGenre,
+  getMovieDetails,
   getPopularMovies, 
   getTopRatedMovies, 
   getTrendingMovies, 
@@ -12,6 +14,7 @@ router.get('/popular', getPopularMovies);
 router.get('/top_rated', getTopRatedMovies);
 router.get('/upcoming', getUpcomingMovies);
 router.get('/trending/:time_window', getTrendingMovies);
-// router.get('/trending/week', getTrendingMovies);
+router.get('/discover', discoverMoviesByGenre);
+router.get('/details/:id', getMovieDetails);
 
 export default router;
