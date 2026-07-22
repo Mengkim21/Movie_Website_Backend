@@ -17,7 +17,23 @@ export const getTrendingTV = async (req, res) => {
       results: tv
     })
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch trending tv!" });
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getPopularTV = async (req, res) => {
+  try {
+    const page = req.query.page || 1;
+    const response = await tmdbClient.get(`/tv/popular?page=${page}`);
+    const tv = response.data.results.map(formatTV);
+
+    res.status(200).json({
+      message: "Successfully fetch popular TV!",
+      page: response.data.tv,
+      results: tv
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -33,27 +49,97 @@ export const getTopRatedTV = async (req, res) => {
       results: tv
     })
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch top rated tv!" });
+    res.status(500).json({ message: error.message });
   }
 };
 
+export const getAiringTodayTV = async (req, res) => {
+  try {
+    const page = req.query.page || 1;
+    const response = await tmdbClient.get(`/tv/airing_today?page=${page}`);
+    const tv = response.data.results.map(formatTV);
+
+    res.status(200).json({
+      message: "Successfully fetch airing today TV!",
+      page: response.data.tv,
+      results: tv
+    })
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+let cache = null;
+const getDiscoveryMeta = (type, genreId, allGenres) => {
+  const categories = {
+    popular: {
+      title: 'Popular',
+      description: 'The shows everyone is watching right now.'
+    },
+    top_rated: {
+      title: 'Top Rated',
+      description: 'Highest scoring picks based on global reviews.'
+    },
+    airing_today: {
+      title: 'Airing Today',
+      description: 'Series that streaming right now.'
+    },
+    all: {
+      title: 'All Shows',
+      description: 'A broad library of shows to explore.'
+    },
+  };
+
+  if (type && categories[type]) return categories[type];
+
+  if (genreId) {
+    const genre = allGenres.find(g => g.id === Number(genreId));
+    return {
+      title: genre ? genre.name : 'Genre Explore',
+      description: genre 
+        ? `The best selection of ${genre.name} cinema.`
+        : 'A curated selection of movies from this genre.'
+    }
+  }
+
+  return categories.all;
+}
+
 export const discoverTVByGenre = async (req, res) => {
   try {
-    const { genreId } = req.query;
-    const page = req.query.page || 1;
-    const response = await tmdbClient.get(`/discover/tv`, {
-      params: {
-        with_genres: genreId,
-        page: page,
-        sort_by: 'popularity.desc'
-      }
-    });
+    const { type, page = 1 } = req.query;
+    const genreId = req.query.genre || req.query.genre_id || req.query.genreId;
+  
+    let tmdbUrl = '/discover/tv';
+    let params = { page };
+
+    if (!cache) {
+      const genreRes = await tmdbClient.get('/genre/tv/list');
+      cache = genreRes.data.genres; 
+    }
+  
+    if (genreId && genreId !== 'undefined') {
+      tmdbUrl = '/discover/tv';
+      params.with_genres = Number(genreId);
+    } else if (type === 'popular') {
+      tmdbUrl = '/tv/popular';
+    } else if (type === 'top_rated') {
+      tmdbUrl = '/tv/top_rated';
+    } else if (type === 'airing_today') {
+      tmdbUrl = '/tv/airing_today';
+    }
+
+    const response = await tmdbClient.get(tmdbUrl, { params });
 
     const tv = response.data.results.map(formatTV);
+    const meta = getDiscoveryMeta(type, genreId, cache);
+
     res.status(200).json({
       message: "Successfully discover tv by genre",
       results: tv,
-      total_pages: response.data.total_pages
+      total_pages: response.data.total_pages,
+      page: response.data.page,
+      meta
     });
   } catch (error) {
     res.status(400).json({ message: error.message });

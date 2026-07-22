@@ -33,10 +33,17 @@ export const getUpcomingMovies = async (req, res) => {
   try {
     const page = req.query.page || 1;
     const response = await tmdbClient.get(`/movie/upcoming?page=${page}`);
-    const movies = response.data.results.map(formatMovie);
+    
+    const currentDate = new Date().toISOString().split('T')[0];
+    const filteredMovies = response.data.results.filter(movie => {
+      return movie.release_date >= currentDate;
+    });
+
+    const formattedResults = filteredMovies.map(formatMovie);
+    
     res.json({
       page: response.data.page,
-      results: movies
+      results: formattedResults,
     });
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch upcoming movies!" });
@@ -61,23 +68,83 @@ export const getTrendingMovies = async (req, res) => {
   }
 };
 
+let cache = null;
+const getDiscoveryMeta = (type, genreId, allGenres) => {
+  const categories = {
+    popular: {
+      title: 'Popular',
+      description: 'The movies everyone is watching right now.'
+    },
+    top_rated: {
+      title: 'Top Rated',
+      description: 'Highest scoring picks based on global reviews.'
+    },
+    upcoming: {
+      title: 'Coming Soon',
+      description: 'Upcoming release in theaters and streaming soon.'
+    },
+    all: {
+      title: 'All Movies',
+      description: 'A broad library of movies to explore.'
+    }
+  };
+
+  if (type && categories[type]) return categories[type];
+
+  if (genreId) {
+    const genre = allGenres.find(g => g.id === Number(genreId));
+    return {
+      title: genre ? genre.name : 'Genre Explore',
+      description: genre
+        ? `The best selection of ${genre.name} cinema.`
+        : 'A curated selection of movies from this genre.'
+    }
+  }
+
+  return categories.all;
+};
+
 export const discoverMoviesByGenre = async (req, res) => {
   try {
-    const { genreId } = req.query;
-    const page = req.query.page || 1;
-    const response = await tmdbClient.get(`/discover/movie`, {
-      params: {
-        with_genres: genreId,
-        page: page,
-        sort_by: 'popularity.desc'
-      }
-    });
+    const { type, page = 1 } = req.query;
+    const genreId = req.query.genreId || req.query.genre_id || req.query.genre;
+    
+    let tmdbUrl = '/discover/movie';
+    let params = { page };
+  
+    if (!cache) {
+      const genreRes = await tmdbClient.get('/genre/movie/list');
+      cache =  genreRes.data.genres;
+    }
+  
+    if (genreId && genreId !== 'undefined') {
+      tmdbUrl = '/discover/movie';
+      params.with_genres = Number(genreId);
+    } else if (type === 'popular') {
+      tmdbUrl = '/movie/popular';
+    } else if (type === 'top_rated') {
+      tmdbUrl = '/movie/top_rated';
+    } else if (type === 'upcoming') {
+      tmdbUrl = '/movie/upcoming';
+    } 
 
-    const movie = response.data.results.map(formatMovie);
+    const response = await tmdbClient.get(tmdbUrl, { params });
+ 
+    let results = response.data.results.map(formatMovie);
+
+    if (type === 'upcoming') {
+      const currentDate = new Date().toISOString().split('T')[0];
+      results = results.filter(movie => movie.release_date >= currentDate);
+    }
+
+    const meta = getDiscoveryMeta(type, genreId, cache);
+    
     res.status(200).json({
       message: "Successfully discover movies",
-      results: movie,
-      total_pages: response.data.total_pages
+      results,
+      total_pages: response.data.total_pages,
+      page: response.data.page,
+      meta
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -105,5 +172,22 @@ export const getMovieDetails = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ message: error.message });    
+  }
+};
+
+export const getFeaturedMovie = async (req, res) => {
+  try {
+    const trendingRes = await tmdbClient.get('/trending/movie/week');
+    const firstMovie = trendingRes.data.results[0];
+
+    const imageRes = await tmdbClient.get(`/movie/${firstMovie.id}/images`);
+    const logo = imageRes.data.logos.find(logo => logo.iso_639_1 == 'en') || imageRes.data.logos[0];
+
+    res.status(200).json({
+      ...formatMovie(firstMovie),
+      logo_path: logo ? `https://images.tmdb.org/t/p/original${logo.file_path}` : null
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 }
