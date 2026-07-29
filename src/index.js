@@ -7,6 +7,7 @@ import genreRoutes from './routes/genreRoutes.js';
 import watchlistRoutes from './routes/watchlistRoutes.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import searchRoutes from './routes/searchRoutes.js';
+import historyRoutes from './routes/historyRoutes.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -26,8 +27,9 @@ app.use('/api/movies', movieRoutes);
 app.use('/api/tv', tvRoutes);
 app.use('/api/genre', genreRoutes);
 app.use('/api/watchlist', watchlistRoutes);
-app.use('/api/review', reviewRoutes);
+app.use('/api/reviews', reviewRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/history', historyRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

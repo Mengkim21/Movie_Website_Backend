@@ -1,5 +1,5 @@
 import { supabase } from "../config/supabaseClient.js";
-import { updateProfile } from "../models/userModel.js";
+import { updateProfile } from "../utils/userMapper.js";
 import { auth } from '../middleware/authMiddleware.js';
 
 export const register = async (req, res) => {
@@ -98,3 +98,22 @@ export const updateUserProfile = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
+
+export const getMyProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { data, error } = await supabase
+      .from('users')
+      .select('user_id, username, email, created_at')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    res.status(200).json({
+      success: "You are authorized!",
+      user: data
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}

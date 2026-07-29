@@ -16,7 +16,7 @@ router.get('/top_rated', getTopRatedMovies);
 router.get('/upcoming', getUpcomingMovies);
 router.get('/trending/:time_window', getTrendingMovies);
 router.get('/discover', discoverMoviesByGenre);
-router.get('/details/:id', getMovieDetails);
-router.get('/featured', getFeaturedMovie);
+router.get('/:id', getMovieDetails);
+router.get('/featured/:time_window', getFeaturedMovie);
 
 export default router;

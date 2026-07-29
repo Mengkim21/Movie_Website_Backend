@@ -1,5 +1,6 @@
 import tmdbClient from '../config/tmdb.js';
-import { formatMovie } from '../models/movieModel.js';
+import { formatCast, formatDirector } from '../utils/creditMapper.js';
+import { formatMovie, formatMovieDetail } from '../utils/movieMapper.js';
 
 export const getPopularMovies = async (req, res) => {
   try {
@@ -118,7 +119,6 @@ export const discoverMoviesByGenre = async (req, res) => {
     }
   
     if (genreId && genreId !== 'undefined') {
-      tmdbUrl = '/discover/movie';
       params.with_genres = Number(genreId);
     } else if (type === 'popular') {
       tmdbUrl = '/movie/popular';
@@ -155,20 +155,14 @@ export const getMovieDetails = async (req, res) => {
   try {
     const id = req.params.id;
     const response = await tmdbClient.get(`/movie/${id}`, {
-      params: {append_to_response: 'credits,videos'}
+      params: {append_to_response: 'credits,videos,similar,images'}
     });
-    const movie = response.data;
 
+    const movie = response.data;
+    // const logo = movie.images.logos.find(logo => logo.iso_639_1 === 'en') || movie.images.logos[0];
+    // const trailer = movie.videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube')
     res.status(200).json({
-      ...formatMovie(movie),
-      budget: movie.budget,
-      runtime: movie.runtime,
-      status: movie.status,
-      genres: movie.genres,
-      origin_country: movie.origin_country,
-      cast: movie.credits.cast.slice(0, 10),
-      director: movie.credits.crew.filter(person => person.job == 'Director'),
-      trailer: movie.videos.results.find(video => video.type === 'Trailer')
+      ...formatMovieDetail(movie)
     });
   } catch (error) {
     res.status(400).json({ message: error.message });    
@@ -177,15 +171,16 @@ export const getMovieDetails = async (req, res) => {
 
 export const getFeaturedMovie = async (req, res) => {
   try {
-    const trendingRes = await tmdbClient.get('/trending/movie/week');
+    const time_window = req.params.time_window;
+    const trendingRes = await tmdbClient.get(`/trending/movie/${time_window}`);
     const firstMovie = trendingRes.data.results[0];
 
     const imageRes = await tmdbClient.get(`/movie/${firstMovie.id}/images`);
-    const logo = imageRes.data.logos.find(logo => logo.iso_639_1 == 'en') || imageRes.data.logos[0];
+    const logo = imageRes.data.logos.find(logo => logo.iso_639_1 === 'en') || firstMovie.logos[0];
 
     res.status(200).json({
       ...formatMovie(firstMovie),
-      logo_path: logo ? `https://images.tmdb.org/t/p/original${logo.file_path}` : null
+      logo_path: logo ? `https://image.tmdb.org/t/p/original${logo.file_path}` : null
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
