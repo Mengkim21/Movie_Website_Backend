@@ -1,6 +1,7 @@
 import tmdbClient from "../config/tmdb.js";
-import { formatMovie } from "../models/movieModel.js";
-import { formatTV } from "../models/tvModel.js";
+import { formatMovie } from "../utils/movieMapper.js";
+import { formatSearchItem } from "../utils/searchMapper.js";
+import { formatTV } from "../utils/tvMapper.js";
 
 export const searchMovies = async (req, res) => {
   try {
@@ -39,4 +40,25 @@ export const searchTV = async (req, res) => {
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
-}
+};
+
+export const searchMulti = async (req, res) => {
+  try {
+    const page = req.query.page || 1;
+    const query = req.query.query || "";
+
+    const response = await tmdbClient.get(`/search/multi?query=${query}&page=${page}`);
+    const multi = response.data.results.filter(item => item.media_type !== 'person');
+
+    if (!response) {
+      return res.status(401).json({ message: "Failed to search for multiple media" });
+    }
+
+    res.status(200).json({
+      message: "Search multiple media succesful",
+      results: multi.map(formatSearchItem)
+    })
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};

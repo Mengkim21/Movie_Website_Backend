@@ -14,6 +14,6 @@ router.get('/top_rated', getTopRatedTV);
 router.get('/popular', getPopularTV);
 router.get('/airing_today', getAiringTodayTV);
 router.get('/discover', discoverTVByGenre);
-router.get('/details/:id', getTVDetails);
+router.get('/:id', getTVDetails);
 
 export default router;

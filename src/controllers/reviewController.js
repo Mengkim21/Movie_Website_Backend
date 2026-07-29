@@ -4,14 +4,15 @@ export const createReview = async (req, res) => {
   try {
     // Request required data from database
     const userId = req.user.id;
-    const { movie_id, rating, content } = req.body;
+    const { media_id, media_type, rating, content } = req.body;
 
     // Check an existing review to prevent duplicate before add another one
     const { data: existingReview, error: existingError } = await supabase
       .from('reviews')
       .select('*')
-      .eq('movie_id', movie_id)
       .eq('user_id', userId)
+      .eq('media_id', media_id)
+      .eq('media_type', media_type)
       .eq('rating', rating)
       .eq('content', content)
       .maybeSingle();
@@ -25,8 +26,9 @@ export const createReview = async (req, res) => {
     const { error: reviewError } = await supabase
       .from('reviews')
       .insert({
-        movie_id,
         user_id: userId,
+        media_id,
+        media_type,
         rating,
         content,
       })
@@ -47,13 +49,18 @@ export const getReviews = async (req, res) => {
     // Retrieve reviews data
     const { data, error } = await supabase
       .from('reviews')
-      .select('*')
+      .select(`
+        created_at,
+        media_id,
+        media_type,
+        media:media (*)  
+      `)
       .eq('user_id', userId);
 
     if (error) throw error;
     res.status(200).json({
       message: "Receive reviews succesfully!",
-      reviews: data
+      results: data
     })
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -63,14 +70,15 @@ export const getReviews = async (req, res) => {
 export const updateReview = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { review_id, rating, content } = req.body
+    const { review_id, media_id, rating, content } = req.body
 
     // Check an existing review
     const { data: existingReview } = await supabase
       .from('reviews')
-      .select('review_id', 'movie_id', 'user_id')
+      .select('review_id', 'media_id', 'media_type', 'user_id')
       .eq('user_id', userId)
       .eq('review_id', review_id)
+      .eq('media_id', media_id)
       .maybeSingle();
     
     if (!existingReview) {
@@ -85,7 +93,8 @@ export const updateReview = async (req, res) => {
         content,
       })
       .eq('user_id', userId)
-      .eq('review_id', review_id);
+      .eq('review_id', review_id)
+      .eq('media_id', media_id);
 
     if (updateError) throw updateError;
     res.status(200).json({ message: "Successfully updated review" });
@@ -97,14 +106,15 @@ export const updateReview = async (req, res) => {
 export const deleteReview = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { review_id } = req.body;
+    const { review_id, media_id } = req.body;
 
     // Check an existing review
     const { data: existingReview } = await supabase
       .from('reviews')
-      .select('review_id', 'movie_id', 'user_id')
+      .select('review_id', 'media_id', 'user_id')
       .eq('user_id', userId)
       .eq('review_id', review_id)
+      .eq('media_id', media_id)
       .maybeSingle();
 
     if (!existingReview) {
@@ -116,7 +126,8 @@ export const deleteReview = async (req, res) => {
       .from('reviews')
       .delete()
       .eq('user_id', userId)
-      .eq('review_id', review_id);
+      .eq('review_id', review_id)
+      .eq('media_id', media_id);
 
     if (reviewError) throw reviewError;
 

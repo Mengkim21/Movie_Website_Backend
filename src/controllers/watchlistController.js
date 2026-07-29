@@ -1,16 +1,22 @@
 import { supabase } from '../config/supabaseClient.js'; 
 import tmdbClient from '../config/tmdb.js';
+import { getImageUrl } from '../utils/imageMapper.js';
 
 export const getWatchList = async (req, res) => {
   try {
     const userId = req.user.id;
     const { data, error } = await supabase
       .from('watchlist')
-      .select('*')
+      .select(`
+        created_at,
+        media_id,
+        media_type,
+        media:media (*)  
+      `)
       .eq('user_id', userId);
 
     if (error) throw error;
-    res.status(200).json({ watchlist: data });
+    res.status(200).json({ results: data });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -19,40 +25,37 @@ export const getWatchList = async (req, res) => {
 export const addToWatchList = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { movie_id } = req.body;
+    const { media_id, media_type } = req.body;
 
-    const { data: existingMovie } = await supabase
-      .from('movies')
-      .select('movie_id')
-      .eq('movie_id', movie_id)
-      .maybeSingle();
+    const endpoint = media_type === 'movie' ? `/movie/${media_id}` : `/tv/${media_id}`
+    const tmdbResponse = await tmdbClient.get(endpoint);
+  
+    const mediaData = tmdbResponse.data;
 
-    if(!existingMovie) {
-      const tmdbResponse = await tmdbClient.get(`/movie/${movie_id}`);
-      const movieData = tmdbResponse.data;
+    const { error: mediaError } = await supabase
+      .from('media')
+      .upsert({
+        id: mediaData.id,
+        title: mediaData.title || mediaData.name,
+        overview: mediaData.overview,
+        release_date: mediaData.release_date || mediaData.first_air_date,
+        runtime: mediaData.runtime,
+        number_of_seasons: mediaData.number_of_seasons,
+        number_of_episodes: mediaData.number_of_episodes,
+        poster: getImageUrl(mediaData.poster_path, 'w500'),
+        backdrop: getImageUrl(mediaData.backdrop_path, 'original'),
+        rating: mediaData.vote_average === 0 ? 'N/A' : mediaData.vote_average.toFixed(1),
+        media_type: media_type,
+      }, { onConflict: 'id, media_type' });
 
-      const { error: movieError } = await supabase
-        .from('movies')
-        .insert({
-          movie_id: movieData.id,
-          title: movieData.title,
-          overview: movieData.overview,
-          release_date: movieData.release_date,
-          poster_path: movieData.poster_path,
-          backdrop_path: movieData.backdrop_path,
-          vote_average: movieData.vote_average,
-          media_type: movieData.media_type || 'movie',
-        })
-        .select();
-      
-      if(movieError) throw movieError;
-    }
+    if (mediaError) throw mediaError;
 
     const { error: watchlistError } = await supabase
       .from('watchlist')
       .insert({
         user_id: userId,
-        movie_id: movie_id,
+        media_id: media_id,
+        media_type: media_type
       })
       .select();
 
@@ -68,12 +71,14 @@ export const addToWatchList = async (req, res) => {
 export const removeFromWatchList = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { movie_id } = req.body;
+    const { media_id, media_type } = req.body;
 
     const { data: existInWatchlist } = await supabase
       .from('watchlist')
-      .select('movie_id')
+      .select('*')
       .eq('user_id', userId)
+      .eq('media_id', media_id)
+      .eq('media_type', media_type)
       .maybeSingle();
 
     if(existInWatchlist) {
@@ -81,7 +86,9 @@ export const removeFromWatchList = async (req, res) => {
         .from('watchlist')
         .delete()
         .eq('user_id', userId)
-        .eq('movie_id', movie_id);
+        .eq('media_id', media_id)
+        .eq('media_type', media_type)
+        .select();
       
       if(watchlistError) throw watchlistError;
     }

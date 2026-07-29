@@ -1,5 +1,5 @@
 import tmdbClient from "../config/tmdb.js";
-import { formatTV } from "../models/tvModel.js";
+import { formatTV, formatTVDetail } from "../utils/tvMapper.js";
 
 export const getTrendingTV = async (req, res) => {
   try {
@@ -119,7 +119,6 @@ export const discoverTVByGenre = async (req, res) => {
     }
   
     if (genreId && genreId !== 'undefined') {
-      tmdbUrl = '/discover/tv';
       params.with_genres = Number(genreId);
     } else if (type === 'popular') {
       tmdbUrl = '/tv/popular';
@@ -150,22 +149,14 @@ export const getTVDetails = async (req, res) => {
   try {
     const id = req.params.id;
     const response = await tmdbClient.get(`/tv/${id}`, {
-      params: {append_to_response: 'credits,videos'}
+      params: {append_to_response: 'credits,videos,similar,images'}
     });
+
     const tv = response.data;
+    // const logo = tv.images.logos.find(logo => logo.iso_639_1 === 'en') || tv.images.logos[0];
+    // const trailer = tv.videos.results.find(v => v.type === 'Trailer' && v.site === 'Youtube')
     res.status(200).json({
-      ...formatTV(tv),
-      episode_run_time: tv.episode_run_time,
-      first_air_date: tv.first_air_date,
-      genres: tv.genres,
-      number_of_episodes: tv.number_of_episodes,
-      number_of_seasons: tv.number_of_seasons,
-      origin_country: tv.origin_country,
-      last_air_date: tv.last_air_date,
-      seasons: tv.seasons,
-      cast: tv.credits.cast.slice(0, 10),
-      director: tv.credits.crew.filter(member => member.job.includes('Director')),
-      trailer: tv.videos.results.find(video => video.type === 'Trailer'),
+      ...formatTVDetail(tv)
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
