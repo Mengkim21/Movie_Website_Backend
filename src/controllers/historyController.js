@@ -4,7 +4,11 @@ import { getImageUrl } from "../utils/imageMapper.js";
 
 export const addToHistory = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { media_id, media_type } = req.body;
 
     const endpoint = media_type === 'movie' ? `/movie/${media_id}` : `/tv/${media_id}`
@@ -30,24 +34,34 @@ export const addToHistory = async (req, res) => {
 
     if (mediaError) throw mediaError;
 
-    const { error } = await supabase
+    const { error: historyError } = await supabase
       .from('watch_history')
       .upsert({
         user_id: userId,
-        media_id: media_id,
-        media_type: media_type,
+        media_id,
+        media_type,
         watched_at: new Date()
-      }, {onConflict: 'user_id, media_id, media_type'});
+      }, {onConflict: 'user_id, media_id, media_type'})
+      .select(`
+        *,
+        media:media (*)  
+      `);
 
-    res.status(200).json({ message: "History updated!" });
+    if (historyError) throw historyError;
+
+    return res.status(200).json({ message: "History updated!" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: error.message });
   }
 };
 
 export const getHistory = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { data, error } = await supabase
       .from('watch_history')
       .select(`
@@ -58,9 +72,10 @@ export const getHistory = async (req, res) => {
       .order('watched_at', {ascending: false});
 
     if (error) throw error;
+
     res.status(200).json({ 
       message: "Successfully receive history!",
-      results: data
+      results: data ?? []
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
