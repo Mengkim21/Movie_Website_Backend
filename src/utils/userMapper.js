@@ -8,7 +8,7 @@ export const getById = async (user_id) => {
     .single();
 
   if(error) throw error;
-  if(!data) throw new Error("User not found!");
+
   return data;
 };
 
@@ -18,6 +18,7 @@ export const updateProfile = async (userId, updates) => {
     .update(updates)
     .eq('user_id', userId)
     .select()
+    .single();
 
   if(error) throw error;
   return data;

@@ -3,7 +3,11 @@ import { supabase } from '../config/supabaseClient.js';
 export const createReview = async (req, res) => {
   try {
     // Request required data from database
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { media_id, media_type, rating, content } = req.body;
 
     // Check an existing review to prevent duplicate before add another one
@@ -13,8 +17,6 @@ export const createReview = async (req, res) => {
       .eq('user_id', userId)
       .eq('media_id', media_id)
       .eq('media_type', media_type)
-      .eq('rating', rating)
-      .eq('content', content)
       .maybeSingle();
 
     if (existingError) throw existingError;
@@ -32,20 +34,27 @@ export const createReview = async (req, res) => {
         rating,
         content,
       })
-      .select();
+      .select(`
+        *,
+        media:media (*)
+      `);
 
     if(reviewError) throw reviewError;
 
-    res.status(200).json({ message: "Successfully reviewed a movie!" });
+    return res.status(200).json({ message: "Successfully reviewed a movie!" });
   } catch (error) {
     console.log(error);
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 };
 
 export const getReviews = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     // Retrieve reviews data
     const { data, error } = await supabase
       .from('reviews')
@@ -58,9 +67,10 @@ export const getReviews = async (req, res) => {
       .eq('user_id', userId);
 
     if (error) throw error;
+
     res.status(200).json({
       message: "Receive reviews succesfully!",
-      results: data
+      results: data ?? []
     })
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -69,18 +79,23 @@ export const getReviews = async (req, res) => {
 
 export const updateReview = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { review_id, media_id, rating, content } = req.body
 
     // Check an existing review
-    const { data: existingReview } = await supabase
+    const { data: existingReview, error: existingCheckError } = await supabase
       .from('reviews')
-      .select('review_id', 'media_id', 'media_type', 'user_id')
+      .select('*')
       .eq('user_id', userId)
       .eq('review_id', review_id)
       .eq('media_id', media_id)
       .maybeSingle();
     
+    if (existingCheckError) throw existingCheckError;
     if (!existingReview) {
       return res.status(401).json({ message: "Review doesn't exist!" });
     }
@@ -97,19 +112,23 @@ export const updateReview = async (req, res) => {
       .eq('media_id', media_id);
 
     if (updateError) throw updateError;
-    res.status(200).json({ message: "Successfully updated review" });
+    return res.status(200).json({ message: "Successfully updated review" });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 };
 
 export const deleteReview = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { review_id, media_id } = req.body;
 
     // Check an existing review
-    const { data: existingReview } = await supabase
+    const { data: existingReview, existingCheckError } = await supabase
       .from('reviews')
       .select('review_id', 'media_id', 'user_id')
       .eq('user_id', userId)
@@ -117,6 +136,7 @@ export const deleteReview = async (req, res) => {
       .eq('media_id', media_id)
       .maybeSingle();
 
+    if (existingCheckError) throw existingCheckError;
     if (!existingReview) {
       return res.status(401).json({ message: "Review doesn't exist!" });
     }
@@ -131,8 +151,8 @@ export const deleteReview = async (req, res) => {
 
     if (reviewError) throw reviewError;
 
-    res.status(200).json({ message: "Successfully deleted the review"});
+    return res.status(200).json({ message: "Successfully deleted the review"});
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 };

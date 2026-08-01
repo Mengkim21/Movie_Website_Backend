@@ -4,19 +4,24 @@ import { getImageUrl } from '../utils/imageMapper.js';
 
 export const getWatchList = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { data, error } = await supabase
       .from('watchlist')
       .select(`
-        created_at,
-        media_id,
-        media_type,
+        *,
         media:media (*)  
       `)
       .eq('user_id', userId);
 
     if (error) throw error;
-    res.status(200).json({ results: data });
+    res.status(200).json({ 
+      message: 'Successfully receive watchlist!',
+      results: data ?? []
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -24,7 +29,11 @@ export const getWatchList = async (req, res) => {
 
 export const addToWatchList = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { media_id, media_type } = req.body;
 
     const endpoint = media_type === 'movie' ? `/movie/${media_id}` : `/tv/${media_id}`
@@ -57,44 +66,39 @@ export const addToWatchList = async (req, res) => {
         media_id: media_id,
         media_type: media_type
       })
-      .select();
+      .select(`
+        *,
+        media:media (*)
+      `);
 
-    if(watchlistError && watchlistError.code !== '23505') {
-      return res.status(400).json({ message: watchlistError.message });
-    }
-    res.status(200).json({ message: "Successfully added to watchlist!" });
+    if(watchlistError) throw watchlistError;
+
+    return res.status(200).json({ message: "Successfully added to watchlist!" });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 };
 
 export const removeFromWatchList = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
+     if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
     const { media_id, media_type } = req.body;
 
-    const { data: existInWatchlist } = await supabase
+    const { error: watchlistError } = await supabase
       .from('watchlist')
-      .select('*')
+      .delete()
       .eq('user_id', userId)
       .eq('media_id', media_id)
-      .eq('media_type', media_type)
-      .maybeSingle();
+      .eq('media_type', media_type);
 
-    if(existInWatchlist) {
-      const { error: watchlistError } = await supabase
-        .from('watchlist')
-        .delete()
-        .eq('user_id', userId)
-        .eq('media_id', media_id)
-        .eq('media_type', media_type)
-        .select();
-      
-      if(watchlistError) throw watchlistError;
-    }
+    if (watchlistError) throw watchlistError;
     
-    res.status(200).json({ message: "Remove from watchlist successfully!" });
+    return res.status(200).json({ message: "Remove from watchlist successfully!" });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    return res.status(400).json({ message: error.message });
   }
 }

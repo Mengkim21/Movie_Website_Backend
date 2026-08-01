@@ -76,7 +76,7 @@ export const updateUserProfile = async (req, res) => {
     const { username, email, password, avatar_url } = req.body;
 
     if(email || password) {
-      const { error: authError } = await supabase.updateUser({
+      const { error: authError } = await supabase.auth.updateUser({
         email,
         password,
       });
@@ -86,7 +86,6 @@ export const updateUserProfile = async (req, res) => {
 
     const updatedUser = await updateProfile(userId, {
       username,
-      email,
       avatar_url,
     });
 
